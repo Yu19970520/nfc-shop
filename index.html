@@ -147,6 +147,8 @@
   </div>
 
   <script>
+    const API_URL = "https://nfc-shop-cy2.vercel.app/api/generate-review";
+    const AI_TIMEOUT_MS = 6500;
     const keywordList = [
       "干净整洁",
       "服务热情",
@@ -454,6 +456,83 @@
       return review;
     }
 
+    function cacheKeyFor(keywords) {
+      return "aiReviewCache:" + keywords.slice().sort().join("|");
+    }
+
+    function getAiCache(keywords) {
+      try { return JSON.parse(localStorage.getItem(cacheKeyFor(keywords)) || "[]"); }
+      catch { return []; }
+    }
+
+    function saveAiCache(keywords, review) {
+      try {
+        const key = cacheKeyFor(keywords);
+        const list = JSON.parse(localStorage.getItem(key) || "[]").filter(item => item !== review);
+        list.unshift(review);
+        localStorage.setItem(key, JSON.stringify(list.slice(0, 12)));
+      } catch {}
+    }
+
+    function validAiReview(review) {
+      if (!review) return false;
+      if (review.length < 65 || review.length > 145) return false;
+      if (bannedWords.some(word => review.includes(word))) return false;
+      return true;
+    }
+
+    async function fetchWithTimeout(url, options, timeoutMs) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, { ...options, signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    let latestRequestId = 0;
+
+    async function polishWithDeepSeek(keywords, draft, requestId) {
+      try {
+        const response = await fetchWithTimeout(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            keywords,
+            draft,
+            mode: "hybrid_polish",
+            targetLength: "80-130",
+            avoid: getHistory().slice(0, 8)
+          })
+        }, AI_TIMEOUT_MS);
+
+        if (!response.ok) throw new Error("api failed");
+        const data = await response.json();
+        const aiReview = cleanReview(data.review || "");
+
+        if (requestId !== latestRequestId) return;
+        if (validAiReview(aiReview) && similarity(aiReview, draft) < 0.92) {
+          setResult(aiReview);
+          saveHistory(aiReview);
+          saveAiCache(keywords, aiReview);
+          copyText(aiReview);
+          showTip("DeepSeek 已润色并复制");
+        } else {
+          showTip("已先生成，可直接使用");
+        }
+      } catch (error) {
+        if (requestId === latestRequestId) {
+          showTip("已先生成，DeepSeek 稍慢时可直接使用");
+        }
+      } finally {
+        if (requestId === latestRequestId) {
+          generateBtn.disabled = false;
+          generateBtn.innerText = "一键生成并复制";
+        }
+      }
+    }
+
     generateBtn.onclick = async () => {
       const selected = getSelectedKeywords();
       if (selected.length === 0) {
@@ -461,10 +540,20 @@
         return;
       }
 
-      const review = setResult(buildReview(selected));
-      generateBtn.innerText = "已生成";
-      setTimeout(() => { generateBtn.innerText = "一键生成并复制"; }, 500);
+      const requestId = ++latestRequestId;
+
+      // 1. 先用本地低重复词库秒出一版，用户马上能复制使用。
+      const cached = getAiCache(selected);
+      const baseReview = cached.length && Math.random() < 0.35 ? pick(cached) : buildReview(selected);
+      const review = setResult(baseReview);
+      saveHistory(review);
       copyText(review);
+
+      // 2. 再让 DeepSeek 在后台润色。6.5 秒内返回就自动替换；慢了就保留本地版。
+      generateBtn.disabled = true;
+      generateBtn.innerText = "已先生成，AI润色中...";
+      showTip("已先生成，DeepSeek 正在后台润色");
+      polishWithDeepSeek(selected, review, requestId);
     };
 
     copyBtn.onclick = async () => {
