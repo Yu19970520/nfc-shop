@@ -91,7 +91,7 @@
     }
     textarea {
       width: 100%;
-      min-height: 124px;
+      min-height: 158px;
       margin-top: 18px;
       border-radius: 14px;
       border: 1px solid #ddd;
@@ -129,7 +129,7 @@
   <div class="container">
     <div class="card">
       <h1>好评生成助手</h1>
-      <div class="desc">选择几个关键词，一键生成一条更自然的入住好评，并自动复制。</div>
+      <div class="desc">选择几个关键词，一键生成一条更长、更自然、低重复的入住好评，并自动复制。</div>
 
       <div class="section-title">请选择关键词</div>
       <div class="keywords" id="keywords"></div>
@@ -168,20 +168,122 @@
       "会议", "发票", "洗衣", "酒店名称"
     ];
 
+    // 低重复长评版：每个关键词准备更多替代表达，生成时随机组合成 2-3 句话。
     const phraseMap = {
-      "干净整洁": ["房间收拾得很干净", "卫生看得出有认真打理", "进门感觉挺清爽"],
-      "服务热情": ["沟通起来很顺畅", "服务态度让人舒服", "有问题回应得也比较及时"],
-      "入住顺利": ["入住过程很顺", "到店后没怎么耽误时间", "办理起来很省心"],
-      "房间舒适": ["房间住着挺舒服", "待在房间里挺放松", "住起来没有压迫感"],
-      "环境安静": ["晚上休息比较安静", "周围不会太吵", "环境让人比较放松"],
-      "位置方便": ["位置对出行很友好", "日常出行挺方便", "找起来也不费劲"],
-      "体验满意": ["这次住得挺满意", "感觉比预期舒服", "体验下来挺顺心"],
-      "性价比不错": ["这个价位感觉挺值", "花费和体验比较匹配", "预算内能有这样的体验还不错"],
-      "设施实用": ["常用配置都够用", "日常使用没有不方便", "基础配置用起来顺手"],
-      "办理高效": ["办理速度挺快", "流程安排比较利落", "前后衔接得很顺"],
-      "休息舒适": ["晚上休息得不错", "住下来挺放松", "休息体验比较舒服"],
-      "整体推荐": ["会愿意推荐给朋友", "之后有需要还会考虑", "整体是会推荐的选择"]
+      "干净整洁": [
+        "房间一进门就觉得清爽", "卫生细节处理得比较到位", "床品和桌面都收拾得很利落", "整体卫生让人比较放心",
+        "没有杂乱或者不舒服的感觉", "角落里也能看出有认真打理", "住进去的时候感觉干干净净", "房间状态保持得不错",
+        "视觉上很整洁，住着也安心", "卫生方面没有让人担心的地方", "日常使用区域都挺干净", "打扫后的状态比较自然舒服"
+      ],
+      "服务热情": [
+        "沟通起来很顺畅", "有问题回应得比较及时", "工作人员态度自然又友好", "交流过程中不会让人有压力",
+        "需要确认的事情都处理得很快", "接待感觉比较亲切", "服务不会过分打扰，但需要时又能找到人", "整个沟通过程挺省心",
+        "说话和处理事情都比较耐心", "从咨询到入住都能感受到用心", "遇到小问题也能很快帮忙处理", "服务节奏拿捏得比较舒服"
+      ],
+      "入住顺利": [
+        "从到店到入住都很顺", "办理过程没有耽误太久", "整个流程走得比较轻松", "确认信息很快就完成了",
+        "入住时没有遇到麻烦的环节", "前后安排得比较清楚", "流程不复杂，体验很省事", "到达后很快就安顿下来了",
+        "入住节奏比较顺，不用反复沟通", "过程衔接得比较自然", "安排上没有让人着急", "整体办理下来很轻松"
+      ],
+      "房间舒适": [
+        "房间住起来挺放松", "空间感和氛围都比较舒服", "待在里面不会觉得压抑", "布置简单但住着顺手",
+        "休息和待着都比较自在", "房间给人的感觉比较温和", "舒适度比预期要好一些", "住进去之后很容易放松下来",
+        "房间整体不花哨，但很耐住", "日常活动空间比较顺手", "室内氛围让人愿意多待一会儿", "住下来没有明显不适感"
+      ],
+      "环境安静": [
+        "周围环境比较安静", "晚上休息时没有明显打扰", "整体氛围让人容易放松", "夜里休息感觉比较安稳",
+        "不会有特别吵闹的感觉", "休息时能保持比较舒服的状态", "安静程度符合预期", "睡前和醒来都感觉比较平静",
+        "环境不会让人觉得烦躁", "住着比较适合放松休息", "晚上状态很安稳", "周边声音干扰不明显"
+      ],
+      "位置方便": [
+        "位置找起来不费劲", "日常出行安排起来很顺", "去附近地方都不算麻烦", "周边走动比较方便",
+        "位置对行程安排很友好", "出门办事比较省时间", "路线规划起来挺轻松", "到达和离开都比较方便",
+        "位置整体比较好找", "临时出行也不会觉得绕", "周围基础需求比较容易解决", "对短住来说位置挺省心"
+      ],
+      "体验满意": [
+        "这次住下来挺顺心", "实际体验比预期要稳", "没有踩雷的感觉", "入住感受比较满意",
+        "从头到尾都比较省心", "各方面都比较符合期待", "整体没有让人失望", "住完之后印象挺好",
+        "过程和结果都比较舒服", "体验不夸张但很踏实", "住下来觉得选择没错", "整体感受比较自然"
+      ],
+      "性价比不错": [
+        "这个价位能有这样的体验挺合适", "花费和入住感受比较匹配", "预算内能住得这样算不错", "整体感觉挺值",
+        "不是很贵但住得舒服", "价格和体验之间比较平衡", "同价位里算是比较稳的选择", "性价比方面让人满意",
+        "付出的成本和感受到的品质比较相符", "作为短住选择很合适", "不追求夸张配置的话挺值得", "整体花费让人觉得合理"
+      ],
+      "设施实用": [
+        "常用配置基本都够用", "日常使用起来挺顺手", "该有的东西基本都有", "设施不花哨但比较实用",
+        "用起来没有明显不方便", "基础配置能满足日常需要", "物品摆放比较合理", "实际使用感受比较顺",
+        "房间里的配置比较贴近日常需求", "简单实用这一点做得不错", "没有多余复杂的东西，反而更方便", "需要用到的地方都比较顺手"
+      ],
+      "办理高效": [
+        "办理速度比想象中快", "前后衔接得很利落", "流程安排不拖拉", "确认信息很快完成",
+        "整个办理过程比较高效", "等待时间不长", "处理事情挺干脆", "效率让人感觉省心",
+        "从沟通到确认都比较快", "工作人员处理流程很熟练", "没有在办理上浪费太多时间", "手续完成得比较顺畅"
+      ],
+      "休息舒适": [
+        "晚上睡得比较踏实", "休息下来挺舒服", "躺下后很容易放松", "睡眠体验还不错",
+        "休息时没什么干扰", "住一晚下来挺解乏", "整体休息感受不错", "醒来之后状态还可以",
+        "夜里没有影响休息的情况", "床和环境搭配起来比较舒服", "适合好好休息一晚", "休息质量比预期更稳定"
+      ],
+      "整体推荐": [
+        "下次有需要还会考虑", "会愿意推荐给朋友", "属于可以放心选择的类型", "整体值得推荐",
+        "以后有机会还会再选", "比较适合想省心入住的人", "给人的印象挺稳", "是一次愿意再选的体验",
+        "对这次选择还是认可的", "如果有类似需求会继续考虑", "整体表现比较稳妥", "推荐给想简单舒服入住的人"
+      ]
     };
+
+    const neutralPhrases = [
+      "整个过程没有让人觉得麻烦", "住着比较安心，也比较放松", "没有遇到影响心情的地方", "细节上不夸张但挺舒服",
+      "各方面都比较顺，不会让人费心", "实际入住感受比单看介绍更踏实", "整体节奏比较自然", "住下来感觉比较稳定",
+      "没有明显短板，体验也比较连贯", "适合不想折腾、只想好好休息的人", "从入住到离开都比较顺", "给人的感觉是简单、舒服、可靠"
+    ];
+
+    const openers = [
+      "这次入住下来感觉挺不错", "这次住得比预期更顺心", "这次选择整体没有失望", "入住后的实际感受挺好",
+      "住了一晚之后印象还不错", "这次体验比较自然舒服", "整体来说这次住得挺安心", "这次安排得比较省心",
+      "实际住下来感觉挺稳", "这次入住没有踩雷", "整体体验比想象中更轻松", "这次住宿给人的感觉比较舒服"
+    ];
+
+    const middleStarts = [
+      "比较喜欢的是", "让我觉得加分的是", "印象比较好的地方是", "住下来比较明显的感受是",
+      "实际体验中比较舒服的是", "这次比较满意的点在于", "过程中让人放心的是", "整体感受比较好的地方是"
+    ];
+
+    const softTransitions = [
+      "不是那种特别夸张的好，但胜在稳定", "没有刻意夸大的感觉，反而比较真实", "细节不算复杂，但住起来很顺手",
+      "整体没有过度包装的感觉，住着比较踏实", "作为一次短住体验，这样的状态已经挺满意", "对我来说，这种省心感还是挺重要的",
+      "不会让人觉得将就，也没有什么明显槽点", "整个体验比较连贯，住着心里比较踏实"
+    ];
+
+    const endings = [
+      "下次如果还有类似行程，会愿意继续考虑。", "整体是一次比较舒服的入住，也愿意推荐给有需要的人。",
+      "如果想找一个省心一点的选择，这里还是挺合适的。", "住下来感觉比较值，之后有机会还会再选。",
+      "整体满意度比较高，是可以放心选择的一次入住。", "这次体验给人的印象挺好，后面有需要还会考虑。",
+      "整体没有让人失望，属于住完会觉得选得还不错的类型。", "对这次入住还是比较认可的，推荐给想住得省心的人。"
+    ];
+
+    const templates = [
+      ({o, p, n, m, t, e}) => `${o}，${m}${p[0]}，${p[1]}。${t}，${p[2]}，${e}`,
+      ({o, p, n, m, t, e}) => `${o}，${p[0]}，${p[1]}，第一感觉就比较舒服。${n}，${e}`,
+      ({o, p, n, m, t, e}) => `${o}。${m}${p[0]}，再加上${p[1]}，整个入住过程比较顺。${t}，${e}`,
+      ({o, p, n, m, t, e}) => `${p[0]}，${p[1]}，这些细节让人感觉挺安心。${o}，${n}，${e}`,
+      ({o, p, n, m, t, e}) => `${o}，从入住到离开都比较顺。${p[0]}，${p[1]}，${p[2]}，整体感受挺自然。`,
+      ({o, p, n, m, t, e}) => `${m}${p[0]}，${p[1]}，没有让人觉得敷衍。${t}，${n}，${e}`,
+      ({o, p, n, m, t, e}) => `${o}，${p[0]}，也能感受到${p[1]}。${p[2]}，住下来没有什么负担，${e}`,
+      ({o, p, n, m, t, e}) => `这次住得比较踏实，${p[0]}，${p[1]}，${n}。${t}，整体还是挺推荐的。`,
+      ({o, p, n, m, t, e}) => `${o}，没有遇到影响心情的地方。${m}${p[0]}，${p[1]}，${p[2]}，这点挺加分。`,
+      ({o, p, n, m, t, e}) => `${p[0]}，${p[1]}，实际住进去之后感觉比较放松。${n}，${t}，${e}`,
+      ({o, p, n, m, t, e}) => `${o}，${p[0]}，${p[1]}，不是特别夸张的好，但很舒服。${p[2]}，整体值得考虑。`,
+      ({o, p, n, m, t, e}) => `入住前没有太多期待，但实际体验还不错。${p[0]}，${p[1]}，${n}，${e}`,
+      ({o, p, n, m, t, e}) => `${o}，${m}${p[0]}，${p[1]}。${p[2]}，再加上${n}，住起来挺省心。`,
+      ({o, p, n, m, t, e}) => `整体比较顺的一次入住，${p[0]}，${p[1]}。${t}，${p[2]}，以后有需要会再考虑。`,
+      ({o, p, n, m, t, e}) => `${o}，细节上给人的感觉比较舒服。${p[0]}，${p[1]}，${n}，是一次挺顺心的体验。`,
+      ({o, p, n, m, t, e}) => `${p[0]}，${p[1]}，${p[2]}，这些点都比较符合预期。${t}，整体没有让人失望。`,
+      ({o, p, n, m, t, e}) => `${o}。${m}${p[0]}，${p[1]}，住着不会觉得别扭。${n}，整体感觉比较稳。`,
+      ({o, p, n, m, t, e}) => `这次体验没有复杂的地方，${p[0]}，${p[1]}，过程也比较顺。${t}，${e}`,
+      ({o, p, n, m, t, e}) => `${o}，${p[0]}，${p[1]}，${p[2]}。${n}，如果下次有需要还会考虑。`,
+      ({o, p, n, m, t, e}) => `${m}${p[0]}，${p[1]}，实际住下来会觉得比较省心。${p[2]}，${t}，整体挺满意。`
+    ];
 
     const keywordBox = document.getElementById("keywords");
     const generateBtn = document.getElementById("generateBtn");
@@ -207,7 +309,12 @@
     }
 
     function shuffle(arr) {
-      return arr.slice().sort(() => Math.random() - 0.5);
+      const copy = arr.slice();
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
     }
 
     function showTip(text = "已自动复制，可直接粘贴使用") {
@@ -239,52 +346,105 @@
     }
 
     function cleanReview(text) {
-      let cleaned = String(text || "").replace(/\s+/g, "").replace(/[“”]/g, "");
+      let cleaned = String(text || "")
+        .replace(/\s+/g, "")
+        .replace(/[“”]/g, "")
+        .replace(/，，+/g, "，")
+        .replace(/。。+/g, "。")
+        .replace(/，。/g, "。");
       bannedWords.forEach(word => {
         cleaned = cleaned.split(word).join("");
       });
       return cleaned;
     }
 
-    function buildReview(keywords) {
-      const selected = keywords.length ? keywords : ["体验满意"];
-      const phrases = shuffle(selected)
-        .slice(0, Math.min(4, selected.length))
-        .map(word => pick(phraseMap[word] || [word]));
+    function bigrams(text) {
+      const list = [];
+      for (let i = 0; i < text.length - 1; i++) list.push(text.slice(i, i + 2));
+      return new Set(list);
+    }
 
-      const p1 = phrases[0] || "住下来挺舒服";
-      const p2 = phrases[1] || "过程也比较省心";
-      const p3 = phrases[2] || "整体感觉不错";
-      const p4 = phrases[3] || "会愿意再考虑";
+    function similarity(a, b) {
+      const A = bigrams(a);
+      const B = bigrams(b);
+      if (!A.size || !B.size) return 0;
+      let same = 0;
+      A.forEach(x => { if (B.has(x)) same++; });
+      return same / Math.min(A.size, B.size);
+    }
 
-      const templates = [
-        `这次住得挺舒服，${p1}，${p2}，整个过程没有什么麻烦，感觉挺省心的。`,
-        `${p1}，${p2}，${p3}。不是那种夸张的惊喜，但住下来很踏实。`,
-        `入住下来感觉挺顺，${p1}，${p2}，细节上也比较让人放心，整体满意。`,
-        `这次选择还不错，${p1}，${p2}，住着舒服，也没有遇到什么影响心情的地方。`,
-        `整体是轻松舒服的一次入住，${p1}，${p2}，体验自然，不会让人失望。`,
-        `${p1}，${p2}，${p3}，住下来比预期顺心，推荐给需要的人。`,
-        `没有过度期待，但实际住下来挺满意，${p1}，${p2}，感觉很省心。`,
-        `这次入住挺顺利，${p1}，${p2}，${p4}，整体值得推荐。`,
-        `住下来印象不错，${p1}，${p2}，整体节奏很顺，适合想省心入住的人。`,
-        `这次体验挺自然，${p1}，${p2}，没有刻意夸张的感觉，但确实住得舒服。`
-      ];
+    function getHistory() {
+      try { return JSON.parse(localStorage.getItem("recentLongReviews") || "[]"); }
+      catch { return []; }
+    }
 
-      let review = cleanReview(pick(templates));
+    function saveHistory(review) {
+      const history = getHistory().filter(item => item !== review);
+      history.unshift(review);
+      localStorage.setItem("recentLongReviews", JSON.stringify(history.slice(0, 45)));
+    }
 
-      // 控制长度，尽量保持 30-80 字。
-      if (review.length > 80) {
-        const compactTemplates = [
-          `这次住得挺满意，${p1}，${p2}，整体省心舒服。`,
-          `${p1}，${p2}，住下来挺顺心，整体值得推荐。`,
-          `入住过程很顺，${p1}，${p2}，体验比预期舒服。`
-        ];
-        review = cleanReview(pick(compactTemplates));
+    function makePhrases(keywords) {
+      const selected = keywords.length ? keywords : ["体验满意", "房间舒适", "入住顺利"];
+      const chosen = shuffle(selected).slice(0, Math.min(5, Math.max(3, selected.length)));
+      let phrases = chosen.map(word => pick(phraseMap[word] || [word]));
+      while (phrases.length < 4) phrases.push(pick(neutralPhrases));
+      return shuffle(phrases);
+    }
+
+    function makeCandidate(keywords) {
+      const phrases = makePhrases(keywords);
+      const data = {
+        o: pick(openers),
+        p: phrases,
+        n: pick(neutralPhrases),
+        m: pick(middleStarts),
+        t: pick(softTransitions),
+        e: pick(endings)
+      };
+
+      let review = cleanReview(pick(templates)(data));
+
+      // 尽量生成长一点，但控制在普通评论区适合粘贴的长度内。
+      if (review.length < 72) {
+        review = cleanReview(`${review}${pick(neutralPhrases)}，${pick(endings)}`);
       }
-      if (review.length < 30) {
-        review = cleanReview(`${review}住下来比较踏实，也符合预期。`);
+      if (review.length < 82) {
+        review = cleanReview(`${review}${phrases[3]}，住下来还是挺舒服的。`);
+      }
+      if (review.length > 130) {
+        review = cleanReview(`${data.o}，${phrases[0]}，${phrases[1]}，${phrases[2]}。${data.t}，${data.e}`);
+      }
+      if (review.length > 122) {
+        review = cleanReview(`${phrases[0]}，${phrases[1]}，${phrases[2]}，这些点都比较符合预期。${data.n}，整体是一次挺顺心的入住。`);
       }
       return review;
+    }
+
+    function buildReview(keywords) {
+      const history = getHistory();
+      let best = "";
+      let bestScore = 999;
+
+      for (let i = 0; i < 90; i++) {
+        const candidate = makeCandidate(keywords);
+        if (bannedWords.some(word => candidate.includes(word))) continue;
+        if (candidate.length < 65 || candidate.length > 130) continue;
+
+        const maxSim = history.reduce((max, old) => Math.max(max, similarity(candidate, old)), 0);
+        if (!history.includes(candidate) && maxSim < 0.55) {
+          saveHistory(candidate);
+          return candidate;
+        }
+        if (maxSim < bestScore) {
+          bestScore = maxSim;
+          best = candidate;
+        }
+      }
+
+      const finalReview = best || makeCandidate(keywords);
+      saveHistory(finalReview);
+      return finalReview;
     }
 
     function setResult(text) {
