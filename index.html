@@ -147,8 +147,6 @@
   </div>
 
   <script>
-    const API_URL = "https://nfc-shop-cy2.vercel.app/api/generate-review";
-
     const keywordList = [
       "干净整洁",
       "服务热情",
@@ -170,6 +168,21 @@
       "会议", "发票", "洗衣", "酒店名称"
     ];
 
+    const phraseMap = {
+      "干净整洁": ["房间干净整洁", "卫生情况让人放心", "整体打理得比较干净"],
+      "服务热情": ["服务沟通热情", "工作人员态度不错", "服务让人感觉舒服"],
+      "入住顺利": ["入住过程顺利", "办理过程比较省心", "整个入住流程很顺畅"],
+      "房间舒适": ["房间住起来舒适", "居住感受比较舒服", "空间体验符合预期"],
+      "环境安静": ["环境比较安静", "休息时不容易被打扰", "整体氛围比较安静"],
+      "位置方便": ["位置比较方便", "出行安排比较省心", "周边出行挺方便"],
+      "体验满意": ["整体体验满意", "这次体验比较满意", "整体感受不错"],
+      "性价比不错": ["性价比不错", "整体价格和体验比较匹配", "选择起来比较划算"],
+      "设施实用": ["设施使用起来实用", "基本配置比较实用", "日常使用比较方便"],
+      "办理高效": ["办理效率比较高", "处理事情比较高效", "入住相关安排很利落"],
+      "休息舒适": ["休息得比较舒服", "住下来比较放松", "休息体验挺好"],
+      "整体推荐": ["整体值得推荐", "有需要的话会推荐", "整体来说可以推荐"]
+    };
+
     const keywordBox = document.getElementById("keywords");
     const generateBtn = document.getElementById("generateBtn");
     const copyBtn = document.getElementById("copyBtn");
@@ -187,6 +200,14 @@
 
     function getSelectedKeywords() {
       return Array.from(document.querySelectorAll(".keyword.active")).map(item => item.innerText);
+    }
+
+    function pick(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function shuffle(arr) {
+      return arr.slice().sort(() => Math.random() - 0.5);
     }
 
     function showTip(text = "已自动复制，可直接粘贴使用") {
@@ -217,11 +238,6 @@
       }
     }
 
-    function copyTextInBackground(text) {
-      // 不等待复制完成，避免浏览器剪贴板权限卡住按钮。
-      copyText(text).catch(() => {});
-    }
-
     function cleanReview(text) {
       let cleaned = String(text || "").replace(/\s+/g, "").replace(/[“”]/g, "");
       bannedWords.forEach(word => {
@@ -230,16 +246,32 @@
       return cleaned;
     }
 
-    function localFallback(keywords) {
-      const selected = keywords.length ? keywords : ["整体体验不错"];
+    function buildReview(keywords) {
+      const selected = keywords.length ? keywords : ["体验满意"];
+      const phrases = shuffle(selected)
+        .slice(0, Math.min(4, selected.length))
+        .map(word => pick(phraseMap[word] || [word]));
+
       const templates = [
-        `整体入住体验很满意，${selected.join("、")}都让人感觉不错，过程顺利又省心，是一次比较舒适的住宿体验。`,
-        `这次入住感受很好，${selected.join("、")}，整体体验比较舒适，服务和环境都让人满意。`,
-        `入住过程很顺利，${selected.join("、")}，整体感觉轻松舒服，是一次比较满意的住宿体验。`,
-        `整体体验不错，${selected.join("、")}都挺符合预期，住得比较安心，推荐有需要的人选择。`,
-        `这次住宿体验比较满意，${selected.join("、")}，整体感受自然舒适，入住过程也比较省心。`
+        `这次入住体验很满意，${phrases.join("，")}，整体住下来比较省心，是一次不错的住宿体验。`,
+        `整体感觉不错，${phrases.join("，")}，没有太多不方便的地方，住得比较安心。`,
+        `这次住宿体验比较满意，${phrases.join("，")}，整体感受自然舒服，下次有需要还会考虑。`,
+        `入住下来感觉挺好，${phrases.join("，")}，整体比较符合预期，推荐有需要的人选择。`,
+        `整体入住过程比较顺心，${phrases.join("，")}，住起来轻松舒适，体验感不错。`,
+        `这次体验挺满意，${phrases.join("，")}，整体没有踩雷，住得也比较放心。`
       ];
-      return templates[Math.floor(Math.random() * templates.length)];
+
+      let review = cleanReview(pick(templates));
+
+      // 控制长度，尽量保持 30-80 字。
+      if (review.length > 80) {
+        const shortPhrases = phrases.slice(0, 3);
+        review = cleanReview(`整体入住体验很满意，${shortPhrases.join("，")}，过程顺利省心，是一次不错的住宿体验。`);
+      }
+      if (review.length < 30) {
+        review = cleanReview(`${review}整体住下来比较舒服，也比较符合预期。`);
+      }
+      return review;
     }
 
     function setResult(text) {
@@ -249,21 +281,6 @@
       return review;
     }
 
-    function resetButton() {
-      generateBtn.disabled = false;
-      generateBtn.innerText = "一键生成并复制";
-    }
-
-    async function fetchWithTimeout(url, options, timeoutMs = 15000) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-      try {
-        return await fetch(url, { ...options, signal: controller.signal });
-      } finally {
-        clearTimeout(timer);
-      }
-    }
-
     generateBtn.onclick = async () => {
       const selected = getSelectedKeywords();
       if (selected.length === 0) {
@@ -271,34 +288,10 @@
         return;
       }
 
-      generateBtn.disabled = true;
-      generateBtn.innerText = "正在生成...";
-      tip.style.display = "none";
-
-      try {
-        const response = await fetchWithTimeout(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ keywords: selected })
-        });
-
-        if (!response.ok) throw new Error("API response error");
-
-        const data = await response.json();
-        let review = cleanReview(data.review || "");
-
-        if (!review || review.length < 30 || bannedWords.some(word => review.includes(word))) {
-          review = localFallback(selected);
-        }
-
-        review = setResult(review);
-        resetButton();
-        copyTextInBackground(review);
-      } catch (error) {
-        const review = setResult(localFallback(selected));
-        resetButton();
-        copyTextInBackground(review);
-      }
+      const review = setResult(buildReview(selected));
+      generateBtn.innerText = "已生成";
+      setTimeout(() => { generateBtn.innerText = "一键生成并复制"; }, 500);
+      copyText(review);
     };
 
     copyBtn.onclick = async () => {
