@@ -189,18 +189,37 @@
       return Array.from(document.querySelectorAll(".keyword.active")).map(item => item.innerText);
     }
 
+    function showTip(text = "已自动复制，可直接粘贴使用") {
+      tip.innerText = text;
+      tip.style.display = "block";
+      setTimeout(() => { tip.style.display = "none"; }, 2200);
+    }
+
     async function copyText(text) {
       if (!text) return;
       try {
-        await navigator.clipboard.writeText(text);
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          throw new Error("clipboard unavailable");
+        }
+        showTip("已自动复制，可直接粘贴使用");
       } catch (e) {
-        resultBox.removeAttribute("readonly");
-        resultBox.select();
-        document.execCommand("copy");
-        resultBox.setAttribute("readonly", true);
+        try {
+          resultBox.removeAttribute("readonly");
+          resultBox.select();
+          document.execCommand("copy");
+          resultBox.setAttribute("readonly", true);
+          showTip("已自动复制，可直接粘贴使用");
+        } catch (err) {
+          showTip("已生成，可手动复制");
+        }
       }
-      tip.style.display = "block";
-      setTimeout(() => { tip.style.display = "none"; }, 2200);
+    }
+
+    function copyTextInBackground(text) {
+      // 不等待复制完成，避免浏览器剪贴板权限卡住按钮。
+      copyText(text).catch(() => {});
     }
 
     function cleanReview(text) {
@@ -230,6 +249,21 @@
       return review;
     }
 
+    function resetButton() {
+      generateBtn.disabled = false;
+      generateBtn.innerText = "一键生成并复制";
+    }
+
+    async function fetchWithTimeout(url, options, timeoutMs = 15000) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, { ...options, signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
     generateBtn.onclick = async () => {
       const selected = getSelectedKeywords();
       if (selected.length === 0) {
@@ -242,11 +276,13 @@
       tip.style.display = "none";
 
       try {
-        const response = await fetch(API_URL, {
+        const response = await fetchWithTimeout(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ keywords: selected })
         });
+
+        if (!response.ok) throw new Error("API response error");
 
         const data = await response.json();
         let review = cleanReview(data.review || "");
@@ -256,14 +292,13 @@
         }
 
         review = setResult(review);
-        await copyText(review);
+        resetButton();
+        copyTextInBackground(review);
       } catch (error) {
         const review = setResult(localFallback(selected));
-        await copyText(review);
+        resetButton();
+        copyTextInBackground(review);
       }
-
-      generateBtn.disabled = false;
-      generateBtn.innerText = "一键生成并复制";
     };
 
     copyBtn.onclick = async () => {
