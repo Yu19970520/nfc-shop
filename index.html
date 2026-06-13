@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>好评生成助手</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(180deg, #f7f8fb 0%, #eef1f6 100%);
+      color: #222;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 28px 18px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 22px;
+      padding: 24px;
+      box-shadow: 0 12px 34px rgba(0,0,0,0.08);
+    }
+    h1 {
+      font-size: 24px;
+      margin: 0 0 8px;
+      text-align: center;
+      letter-spacing: .5px;
+    }
+    .desc {
+      font-size: 14px;
+      color: #666;
+      text-align: center;
+      line-height: 1.7;
+      margin-bottom: 22px;
+    }
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin: 18px 0 12px;
+    }
+    .keywords {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .keyword {
+      border: 1px solid #ddd;
+      background: #fff;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      user-select: none;
+      transition: all .16s ease;
+    }
+    .keyword.active {
+      background: #111;
+      color: #fff;
+      border-color: #111;
+      transform: translateY(-1px);
+    }
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    button {
+      width: 100%;
+      border: none;
+      border-radius: 14px;
+      padding: 15px;
+      font-size: 16px;
+      color: #fff;
+      background: #111;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    button.secondary {
+      background: #f0f2f5;
+      color: #222;
+    }
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    textarea {
+      width: 100%;
+      min-height: 124px;
+      margin-top: 18px;
+      border-radius: 14px;
+      border: 1px solid #ddd;
+      padding: 13px;
+      resize: none;
+      font-size: 15px;
+      line-height: 1.7;
+      outline: none;
+      background: #fcfcfd;
+    }
+    .tip {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 14px;
+      color: #17a05d;
+      display: none;
+      font-weight: 600;
+    }
+    .warning {
+      text-align: center;
+      margin-top: 14px;
+      font-size: 12px;
+      color: #888;
+      line-height: 1.5;
+    }
+    .count {
+      color: #999;
+      font-size: 12px;
+      text-align: right;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>好评生成助手</h1>
+      <div class="desc">选择几个关键词，一键生成一条自然通用的入住好评，并自动复制。</div>
+
+      <div class="section-title">请选择关键词</div>
+      <div class="keywords" id="keywords"></div>
+
+      <div class="actions">
+        <button id="generateBtn">一键生成并复制</button>
+        <button class="secondary" id="copyBtn">重新复制当前内容</button>
+      </div>
+
+      <textarea id="result" placeholder="生成的评价内容会显示在这里" readonly></textarea>
+      <div class="count" id="count">0 字</div>
+      <div class="tip" id="tip">已自动复制，可直接粘贴使用</div>
+      <div class="warning">生成内容仅供参考，请根据真实入住体验使用。</div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "/api/generate-review";
+
+    const keywordList = [
+      "干净整洁",
+      "服务热情",
+      "入住顺利",
+      "房间舒适",
+      "环境安静",
+      "位置方便",
+      "体验满意",
+      "性价比不错",
+      "设施实用",
+      "办理高效",
+      "休息舒适",
+      "整体推荐"
+    ];
+
+    const bannedWords = [
+      "早餐", "早饭", "餐厅", "停车", "车位", "免费停车",
+      "泳池", "健身房", "接送", "机场", "海景", "亲子",
+      "会议", "发票", "洗衣", "酒店名称"
+    ];
+
+    const keywordBox = document.getElementById("keywords");
+    const generateBtn = document.getElementById("generateBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const resultBox = document.getElementById("result");
+    const tip = document.getElementById("tip");
+    const count = document.getElementById("count");
+
+    keywordList.forEach(word => {
+      const item = document.createElement("div");
+      item.className = "keyword";
+      item.innerText = word;
+      item.onclick = () => item.classList.toggle("active");
+      keywordBox.appendChild(item);
+    });
+
+    function getSelectedKeywords() {
+      return Array.from(document.querySelectorAll(".keyword.active")).map(item => item.innerText);
+    }
+
+    async function copyText(text) {
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        resultBox.removeAttribute("readonly");
+        resultBox.select();
+        document.execCommand("copy");
+        resultBox.setAttribute("readonly", true);
+      }
+      tip.style.display = "block";
+      setTimeout(() => { tip.style.display = "none"; }, 2200);
+    }
+
+    function cleanReview(text) {
+      let cleaned = String(text || "").replace(/\s+/g, "").replace(/[“”]/g, "");
+      bannedWords.forEach(word => {
+        cleaned = cleaned.split(word).join("");
+      });
+      return cleaned;
+    }
+
+    function localFallback(keywords) {
+      const selected = keywords.length ? keywords : ["整体体验不错"];
+      const templates = [
+        `整体入住体验很满意，${selected.join("、")}都让人感觉不错，过程顺利又省心，是一次比较舒适的住宿体验。`,
+        `这次入住感受很好，${selected.join("、")}，整体体验比较舒适，服务和环境都让人满意。`,
+        `入住过程很顺利，${selected.join("、")}，整体感觉轻松舒服，是一次比较满意的住宿体验。`,
+        `整体体验不错，${selected.join("、")}都挺符合预期，住得比较安心，推荐有需要的人选择。`,
+        `这次住宿体验比较满意，${selected.join("、")}，整体感受自然舒适，入住过程也比较省心。`
+      ];
+      return templates[Math.floor(Math.random() * templates.length)];
+    }
+
+    function setResult(text) {
+      const review = cleanReview(text);
+      resultBox.value = review;
+      count.innerText = `${review.length} 字`;
+      return review;
+    }
+
+    generateBtn.onclick = async () => {
+      const selected = getSelectedKeywords();
+      if (selected.length === 0) {
+        alert("请至少选择一个关键词");
+        return;
+      }
+
+      generateBtn.disabled = true;
+      generateBtn.innerText = "正在生成...";
+      tip.style.display = "none";
+
+      try {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ keywords: selected })
+        });
+
+        const data = await response.json();
+        let review = cleanReview(data.review || "");
+
+        if (!review || review.length < 30 || bannedWords.some(word => review.includes(word))) {
+          review = localFallback(selected);
+        }
+
+        review = setResult(review);
+        await copyText(review);
+      } catch (error) {
+        const review = setResult(localFallback(selected));
+        await copyText(review);
+      }
+
+      generateBtn.disabled = false;
+      generateBtn.innerText = "一键生成并复制";
+    };
+
+    copyBtn.onclick = async () => {
+      await copyText(resultBox.value);
+    };
+  </script>
+</body>
+</html>
